@@ -14,8 +14,14 @@ fn main() {
     i.qualitative_descriptors.insert("name".to_string(), "Potion".to_string());
     i.quantitative_descriptors.insert("Potency".to_string(), 50f32);
 
+    let mut equip = Item::new();
+    equip.qualitative_descriptors.insert("name".to_string(), "helmet".to_string());
+    equip.qualitative_descriptors.insert("slot".to_string(), "head".to_string());
+    equip.quantitative_descriptors.insert("AC".to_string(), 2f32);
+
     //Give 10 of the item to the character
     f.give_item(&i, 10);
+    f.equip(&equip);
 
     println!("Welcome to charactersheet");
 
@@ -28,6 +34,14 @@ fn main() {
         println!("\t{}: #{}", name, data.1);
         //This is really hacky and I should feel bad...
         let formatted = Item::detail(&data.0).replace("\n", "\n\t").replace("\t", "\t\t");
+        println!("\n\t\t{}", formatted);
+    }
+
+    println!("Equipment:");
+    for (slot, data) in &f.equipment {
+        println!("\t{}:", slot);
+        //This is really hacky and I should feel bad...
+        let formatted = Item::detail(&data).replace("\n", "\n\t").replace("\t", "\t\t");
         println!("\n\t\t{}", formatted);
     }
 }
