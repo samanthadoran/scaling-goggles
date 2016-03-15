@@ -20,7 +20,7 @@ fn main() {
     equip.quantitative_descriptors.insert("AC".to_string(), 2f32);
 
     //Give 10 of the item to the character
-    f.give_item(&i, 10);
+    f.modify_inventory(&i, 10);
     f.equip(&equip);
 
     println!("Welcome to charactersheet");

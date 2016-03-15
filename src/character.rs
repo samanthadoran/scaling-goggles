@@ -24,17 +24,23 @@ impl Character {
     }
 
     //Give the character count number of item.
-    pub fn give_item(&mut self, item: &Item, count: i32) {
+    pub fn modify_inventory(&mut self, item: &Item, mut count: i32) {
         let name = item.qualitative_descriptors.get(&"name".to_string()).unwrap();
-        let mut i = self.inventory.entry(name.to_string()).or_insert((item.clone(), 0));
-        i.1 += count;
+        {
+            let mut i = self.inventory.entry(name.to_string()).or_insert((item.clone(), 0));
+            i.1 += count;
+            count = i.1;
+        }
+        if count <= 0 {
+            self.inventory.remove(&name.to_string());
+        }
     }
 
     pub fn equip(&mut self, item: &Item) {
         match item.qualitative_descriptors.get("slot") {
             Some(slot) => {
                 match self.equipment.insert(slot.to_string(), item.clone()) {
-                    Some(i) => self.give_item(&i, 1),
+                    Some(i) => self.modify_inventory(&i, 1),
                     None => {},
                 }
             },
