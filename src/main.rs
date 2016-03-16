@@ -2,6 +2,8 @@ mod character;
 mod item;
 use item::Item;
 use character::Character;
+use std::cell::Cell;
+use std::collections::HashMap;
 
 fn main() {
     //Some random values for a character
@@ -22,6 +24,9 @@ fn main() {
     //Give 10 of the item to the character
     f.modify_inventory(&i, 10);
     f.equip(&equip);
+    f.scores.insert("strength".to_owned(), 10i32);
+    f.feats.insert("strength".to_owned(), HashMap::new());
+    //f.give_feat(&"climb".to_owned(), &true, &5, "strength".to_owned());
 
     println!("Welcome to charactersheet");
 
@@ -43,5 +48,27 @@ fn main() {
         //This is really hacky and I should feel bad...
         let formatted = Item::detail(&data).replace("\n", "\n\t").replace("\t", "\t\t");
         println!("\n\t\t{}", formatted);
+    }
+
+    //Because getting the lifetimes to work in a function was too hard @_@
+    let c = Cell::new(f.scores.get(&"strength".to_owned()).unwrap());
+    let feat = (true, 5, c);
+    f.feats.get_mut(&"strength".to_owned()).unwrap().insert("climb".to_owned(), feat);
+
+    println!("Feats:");
+    for (modifier, data) in &f.feats {
+        println!("\t{}:", modifier);
+        for (name, feat_info) in data {
+            let class_skill = feat_info.0;
+            let bonus = feat_info.1;
+            let modifier = &feat_info.2;
+            let total_bonus =
+                if class_skill && bonus > 0 {
+                    3 + bonus + modifier.get()
+                } else {
+                    bonus + modifier.get()
+                };
+            println!("\t\t{}: {}", name, total_bonus);
+        }
     }
 }

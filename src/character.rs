@@ -1,18 +1,18 @@
 use std::collections::{HashMap, HashSet};
 use super::item::Item;
+use std::cell::Cell;
 
-
-pub struct Character {
+pub struct Character <'a> {
     pub attributes: Item,
     pub inventory: HashMap<String, (Item, i32)>,
-    pub feats: HashMap<String, HashMap<String, i32>>,
+    pub feats: HashMap<String, HashMap<String, (bool, i32, Cell<&'a i32>)>>,
     pub scores: HashMap<String, i32>,
     pub ability_score_names: HashSet<String>,
     pub equipment: HashMap<String, Item>,
 }
 
-impl Character {
-    pub fn new() -> Character {
+impl <'a> Character <'a> {
+    pub fn new () -> Character<'a> {
         Character {
             attributes: Item::new(),
             inventory: HashMap::new(),
