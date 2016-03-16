@@ -1,1 +1,1 @@
-Playing with rust and the idea of characters in an RPG
+Playing with ~~rust~~ Nim and the idea of characters in an RPG.
