@@ -42,7 +42,9 @@
         (floor (- (cdr (assoc ,bonus (player-scores ,player) :test #'string=)) 10) 2))))))
 
 (defun give-feat (feat player)
+  "Place the feat into the player"
   (setf (player-feats player) (acons (cdr (assoc "name" feat :test #'string=)) feat (player-feats player))))
 
 (defun get-feat-val (feat player)
+  "Return the quoted value associated with a given feat"
   (cdr (assoc "value" (cdr (assoc feat (player-feats player) :test #'string=)) :test #'string=)))
