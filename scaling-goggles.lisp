@@ -31,7 +31,9 @@
        (loop for assoc in (cdr item)
          do
          (progn
-          (print (eval (car assoc)))
+          (princ #\linefeed)
+          (princ #\tab)
+          (princ (eval (car assoc)))
           (princ ": ")
           (princ (eval (cdr assoc)))))
        (princ (eval (cdr item))))))
@@ -143,6 +145,7 @@
   (pairlis (list "name" "weight") (list name weight)))
 
 (defun give-item (item player)
+  "Place the item into the player's inventory"
   (setf (player-inventory player)
         (acons
          (cdr
