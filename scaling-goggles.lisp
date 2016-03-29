@@ -6,7 +6,7 @@
   (:export #:print-pretty #:player #:make-player #:player-scores #:player-feats
     #:player-inventory #:player-equipment #:make-skill-expression #:make-default-player
     #:give-skill #:get-skill-val #:player-skills #:make-weight-expression #:give-stat
-    #:player-stats))
+    #:player-stats #:make-item #:give-item))
 
 (in-package :scaling-goggles)
 
@@ -18,7 +18,7 @@
   equipment
   stats)
 
-(defun print-section (name section)
+(defun print-section (name section is-cons)
   "Helper function to print items from a section of player"
   (print name)
   (print "***********")
@@ -27,16 +27,24 @@
     (progn
      (print (eval (car item)))
      (princ ": ")
-     (princ (eval (cdr item)))))
+     (if is-cons
+       (loop for assoc in (cdr item)
+         do
+         (progn
+          (print (eval (car assoc)))
+          (princ ": ")
+          (princ (eval (cdr assoc)))))
+       (princ (eval (cdr item))))))
   (princ #\linefeed))
 
 (defun print-pretty (player)
   "Print a human readable version of player"
-  (print-section "Stats" (player-stats player))
-  (print-section "Scores" (player-scores player))
-  (print-section "Feats" (player-feats player))
-  (print-section "Inventory" (player-inventory player))
-  (print-section "Equipment" (player-equipment player)))
+  (print-section "Stats" (player-stats player) nil)
+  (print-section "Skills" (player-skills player) T)
+  (print-section "Scores" (player-scores player) nil)
+  (print-section "Feats" (player-feats player) nil)
+  (print-section "Inventory" (player-inventory player) T)
+  (print-section "Equipment" (player-equipment player) T))
 
 (defun make-default-player ()
   (let ((s (make-player)))
@@ -51,17 +59,17 @@
 (defun make-weight-expression (player)
   "Creates an expression to define a player's weight"
   `(+
+    ;(reduce #'+
+    ;        (map 'cons
+    ;             (lambda (x)
+    ;                     (cdr
+    ;                      (assoc "weight" x :test #'string=)))
+    ;             (player-equipment ,player)))
     (reduce #'+
-            (map 'list
+            (map 'cons
                  (lambda (x)
                          (cdr
-                          (assoc "weight" x :test #'string=)))
-                 (player-equipment ,player)))
-    (reduce #'+
-            (map 'list
-                 (lambda (x)
-                         (cdr
-                          (assoc "weight" x :test #'string=)))
+                          (assoc "weight" (cdr x) :test #'string=)))
                  (player-inventory ,player)))
     (cdr
      (assoc "weight" (player-stats ,player) :test #'string=))))
@@ -130,3 +138,14 @@
           (cdr
            (assoc skill (player-skills player) :test #'string=))
           :test #'string=)))
+
+(defun make-item (name weight)
+  (pairlis (list "name" "weight") (list name weight)))
+
+(defun give-item (item player)
+  (setf (player-inventory player)
+        (acons
+         (cdr
+          (assoc "name" item :test #'string=))
+         item
+         (player-inventory player))))
