@@ -18,7 +18,25 @@
   equipment
   stats)
 
-(defun print-pretty ())
+(defun print-section (name section)
+  "Helper function to print items from a section of player"
+  (print name)
+  (print "***********")
+  (loop for item in section
+    do
+    (progn
+     (print (eval (car item)))
+     (princ ": ")
+     (princ (eval (cdr item)))))
+  (princ #\linefeed))
+
+(defun print-pretty (player)
+  "Print a human readable version of player"
+  (print-section "Stats" (player-stats player))
+  (print-section "Scores" (player-scores player))
+  (print-section "Feats" (player-feats player))
+  (print-section "Inventory" (player-inventory player))
+  (print-section "Equipment" (player-equipment player)))
 
 (defun make-default-player ()
   (let ((s (make-player)))
@@ -53,7 +71,7 @@
   (setf (player-stats player) (acons stat expr (player-stats player))))
 
 (defun make-skill-expression (name bonus score class-skill player)
-  "Creates a quoted expression representing a feat for a given player"
+  "Creates a quoted expression representing a skill for a given player"
   (pairlis
    (list "name" "class-skill" "bonus" "score" "value")
    (list name class-skill bonus score
@@ -97,7 +115,7 @@
               2))))))
 
 (defun give-skill (skill player)
-  "Place the feat into the player"
+  "Place the skill into the player"
   (setf (player-skills player)
         (acons
          (cdr
@@ -106,7 +124,7 @@
          (player-skills player))))
 
 (defun get-skill-val (skill player)
-  "Return the quoted value associated with a given feat"
+  "Return the quoted value associated with a given skill"
   (cdr
    (assoc "value"
           (cdr
