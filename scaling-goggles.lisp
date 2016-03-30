@@ -6,7 +6,7 @@
   (:export #:print-pretty #:player #:make-player #:player-scores #:player-feats
     #:player-inventory #:player-equipment #:make-skill-expression #:make-default-player
     #:give-skill #:get-skill-val #:player-skills #:make-weight-expression #:give-stat
-    #:player-stats #:make-item #:give-item))
+    #:player-stats #:make-item #:give-item #:make-encumberance-expression))
 
 (in-package :scaling-goggles)
 
@@ -60,16 +60,42 @@
           (pairlis (list) (list)))
     s))
 
+(defun make-encumberance-expression (player)
+  "Creates an encumberance expression"
+  `(if
+     (>
+      (-
+       (eval
+        (cdr
+         (assoc "total weight" (player-stats ,player) :test #'string=)))
+       (eval
+        (cdr
+         (assoc "weight" (player-stats ,player) :test #'string=))))
+      10)
+     (if
+       (>
+        (-
+         (eval
+          (cdr
+           (assoc "total weight" (player-stats ,player) :test #'string=)))
+         (eval
+          (cdr
+           (assoc "weight" (player-stats ,player) :test #'string=))))
+        20)
+       "Heavy"
+       "Medium")
+     "Light"))
+
 (defun make-weight-expression (player)
   "Creates an expression to define a player's weight"
   `(+
     (reduce #'+
-            (if (null (player-inventory ,player))
+            (if (null (player-equipment ,player))
               (list)
               (map 'cons
                 (lambda (x)
                         (cdr
-                         (assoc "weight" x :test #'string=)))
+                         (assoc "weight" (cdr x) :test #'string=)))
                          (player-equipment ,player))))
     (reduce #'+
             (if (null (player-inventory ,player))
