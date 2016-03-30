@@ -27,7 +27,9 @@
     (progn
      (print (eval (car item)))
      (princ ": ")
+     ;If it is of type cons, don't try to eval that, it doesn't make much sense.
      (if is-cons
+       ;Instead, loop over the associations and print them tabbed over
        (loop for assoc in (cdr item)
          do
          (progn
@@ -61,18 +63,22 @@
 (defun make-weight-expression (player)
   "Creates an expression to define a player's weight"
   `(+
-    ;(reduce #'+
-    ;        (map 'cons
-    ;             (lambda (x)
-    ;                     (cdr
-    ;                      (assoc "weight" x :test #'string=)))
-    ;             (player-equipment ,player)))
     (reduce #'+
-            (map 'cons
-                 (lambda (x)
-                         (cdr
-                          (assoc "weight" (cdr x) :test #'string=)))
-                 (player-inventory ,player)))
+            (if (null (player-inventory ,player))
+              (list)
+              (map 'cons
+                (lambda (x)
+                        (cdr
+                         (assoc "weight" x :test #'string=)))
+                         (player-equipment ,player))))
+    (reduce #'+
+            (if (null (player-inventory ,player))
+              (list)
+              (map 'cons
+                   (lambda (x)
+                           (cdr
+                            (assoc "weight" (cdr x) :test #'string=)))
+                   (player-inventory ,player))))
     (cdr
      (assoc "weight" (player-stats ,player) :test #'string=))))
 
