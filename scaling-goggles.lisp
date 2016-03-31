@@ -62,29 +62,53 @@
 
 (defun make-encumberance-expression (player)
   "Creates an encumberance expression"
-  `(if
-     (>
-      (-
-       (eval
-        (cdr
-         (assoc "total weight" (player-stats ,player) :test #'string=)))
-       (eval
-        (cdr
-         (assoc "weight" (player-stats ,player) :test #'string=))))
-      10)
-     (if
-       (>
-        (-
-         (eval
-          (cdr
-           (assoc "total weight" (player-stats ,player) :test #'string=)))
-         (eval
-          (cdr
-           (assoc "weight" (player-stats ,player) :test #'string=))))
-        20)
-       "Heavy"
-       "Medium")
-     "Light"))
+  `(labels
+    ((carry-capacity (str)
+                     (if
+                       (and
+                        (< str 11)
+                        (> str 0))
+                       (* str 10)
+                       (if (> str 14)
+                         (* 2 (carry-capacity (- str 5)))
+                         (aref
+                           (make-array '(4) :initial-contents '(115, 130, 150, 175))
+                           (- str 11))))))
+    (if
+      (>
+       (-
+        (eval
+         (cdr
+          (assoc "total weight" (player-stats ,player) :test #'string=)))
+        (eval
+         (cdr
+          (assoc "weight" (player-stats ,player) :test #'string=))))
+       (float
+        (*
+         (carry-capacity
+          (eval
+           (cdr
+            (assoc "strength" (player-scores ,player) :test #'string=))))
+         (float 1/3))))
+      (if
+        (>
+         (-
+          (eval
+           (cdr
+            (assoc "total weight" (player-stats ,player) :test #'string=)))
+          (eval
+           (cdr
+            (assoc "weight" (player-stats ,player) :test #'string=))))
+         (float
+          (*
+           (carry-capacity
+            (eval
+             (cdr
+              (assoc "strength" (player-scores ,player) :test #'string=))))
+           (float 2/3))))
+        "Heavy"
+        "Medium")
+      "Light")))
 
 (defun make-weight-expression (player)
   "Creates an expression to define a player's weight"
