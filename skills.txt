@@ -1,0 +1,26 @@
+Acrobatics:dexterity
+Appraise:intelligence
+Bluff:charisma
+Climb:strength
+Craft:intelligence
+Diplomacy:charisma
+Disable Device:dexterity
+Disguise:charisma
+Escape Artist:dexterity
+Fly:dexterity
+Handle Animal:charisma
+Heal:wisdom
+Intimidate:charisma
+Knowledge:intelligence
+Linguistics:intelligence
+Perception:wisdom
+Perform:charisma
+Profession:wisdom
+Ride:dexterity
+Sense Motive:wisdom
+Sleight of Hand:dexterity
+Spellcraft:intelligence
+Stealth:dexterity
+Survival:wisdom
+Swim:strength
+Use Magic Device:charisma

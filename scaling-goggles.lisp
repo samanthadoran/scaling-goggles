@@ -9,7 +9,7 @@
     #:player-stats #:make-item #:give-item #:make-encumberance-expression))
 
 (in-package :scaling-goggles)
-
+(ql:quickload "split-sequence")
 (defstruct player
   scores
   skills
@@ -50,15 +50,7 @@
   (print-section "Inventory" (player-inventory player) T)
   (print-section "Equipment" (player-equipment player) T))
 
-(defun make-default-player ()
-  (let ((s (make-player)))
-    (setf (player-scores s)
-          (pairlis
-           (list "strength" "dexterity" "constitution" "intelligence" "wisdom" "charisma")
-           (list 10 10 10 10 10 10)))
-    (setf (player-stats s)
-          (pairlis (list) (list)))
-    s))
+;(defun make-skill-expression (name bonus score class-skill player)
 
 (defun make-encumberance-expression (player)
   "Creates an encumberance expression"
@@ -72,7 +64,8 @@
                        (if (> str 14)
                          (* 2 (carry-capacity (- str 5)))
                          (aref
-                           (make-array '(4) :initial-contents '(115, 130, 150, 175))
+                           (make-array '(4) :initial-contents
+                                       '(115, 130, 150, 175))
                            (- str 11))))))
     (if
       (>
@@ -208,3 +201,25 @@
           (assoc "name" item :test #'string=))
          item
          (player-inventory player))))
+
+;(defun make-skill-expression (name bonus score class-skill player)
+(defun make-default-player (hacky)
+ (let ((s (make-player)))
+   (setf (player-scores s)
+         (pairlis
+          (list "strength" "dexterity" "constitution" "intelligence" "wisdom" "charisma")
+          (list 10 10 10 10 10 10)))
+   (setf (player-stats s)
+         (pairlis (list) (list)))
+   (give-stat "total weight" (make-weight-expression hacky) s)
+   (give-stat "weight" 130 s)
+   (give-stat "encumbrance" (make-encumberance-expression hacky) s)
+   (let ((in (open "/home/samanthadoran/rust-projects/scaling-goggles/skills.txt" :if-does-not-exist nil)))
+     (when in
+       (loop for line = (split-sequence:split-sequence #\: (read-line in nil))
+         while (equal (null (car line)) nil) do
+         (give-skill
+          (make-skill-expression (nth 0 line) (nth 1 line) 0 nil hacky)
+          s))
+       (close in)))
+   s))
