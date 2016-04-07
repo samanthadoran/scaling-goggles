@@ -1,1 +1,1 @@
-Playing with ~~rust~~ Nim and the idea of characters in an RPG.
+Playing with ~~rust~~ ~~Nim~~ Common Lisp and the idea of characters in an RPG.
