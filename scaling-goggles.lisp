@@ -5,8 +5,8 @@
   (:use :cl :cl-user)
   (:export #:print-pretty #:player #:make-player #:player-scores #:player-feats
     #:player-inventory #:player-equipment #:make-skill-expression #:make-default-player
-    #:give-skill #:get-skill-val #:player-skills #:make-weight-expression #:give-stat
-    #:player-stats #:make-item #:give-item #:make-encumberance-expression))
+    #:give-skill #:get-skill-modifier #:player-skills #:make-weight-expression #:give-stat
+    #:player-stats #:make-item #:give-item #:make-encumberance-expression #:update-skill-modifier))
 
 (in-package :scaling-goggles)
 (ql:quickload "split-sequence")
@@ -49,8 +49,6 @@
   (print-section "Feats" (player-feats player) nil)
   (print-section "Inventory" (player-inventory player) T)
   (print-section "Equipment" (player-equipment player) T))
-
-;(defun make-skill-expression (name bonus score class-skill player)
 
 (defun make-encumberance-expression (player)
   "Creates an encumberance expression"
@@ -182,13 +180,23 @@
          skill
          (player-skills player))))
 
-(defun get-skill-val (skill player)
+(defun get-skill-modifier (skill modifier player)
   "Return the quoted value associated with a given skill"
   (cdr
-   (assoc "value"
+   (assoc modifier
           (cdr
            (assoc skill (player-skills player) :test #'string=))
           :test #'string=)))
+
+(defun update-skill-modifier (skill modifier new-modifier player)
+  "Grabs a specific modifier for a specific skill and updates it."
+  (setf
+   (cdr
+    (assoc modifier
+           (cdr
+            (assoc skill (player-skills player) :test #'string=))
+           :test #'string=))
+   new-modifier))
 
 (defun make-item (name weight)
   (pairlis (list "name" "weight") (list name weight)))
@@ -202,8 +210,8 @@
          item
          (player-inventory player))))
 
-;(defun make-skill-expression (name bonus score class-skill player)
 (defun make-default-player (hacky)
+  "Creates a player with some default valuess"
  (let ((s (make-player)))
    (setf (player-scores s)
          (pairlis
@@ -214,7 +222,7 @@
    (give-stat "total weight" (make-weight-expression hacky) s)
    (give-stat "weight" 130 s)
    (give-stat "encumbrance" (make-encumberance-expression hacky) s)
-   (let ((in (open "/home/samanthadoran/rust-projects/scaling-goggles/skills.txt" :if-does-not-exist nil)))
+   (let ((in (open "skills.txt" :if-does-not-exist nil)))
      (when in
        (loop for line = (split-sequence:split-sequence #\: (read-line in nil))
          while (equal (null (car line)) nil) do
