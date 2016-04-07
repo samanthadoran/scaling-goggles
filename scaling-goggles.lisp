@@ -4,9 +4,10 @@
   (:nicknames #:soggles)
   (:use :cl :cl-user)
   (:export #:print-pretty #:player #:make-player #:player-scores #:player-feats
-    #:player-inventory #:player-equipment #:make-skill-expression #:make-default-player
-    #:give-skill #:get-skill-modifier #:player-skills #:make-weight-expression #:give-stat
-    #:player-stats #:make-item #:give-item #:make-encumberance-expression #:update-skill-modifier))
+    #:player-inventory #:player-equipment #:make-skill-expression
+    #:make-default-player #:give-skill #:get-skill-modifier #:player-skills
+    #:make-weight-expression #:give-stat #:player-stats #:make-item #:give-item
+    #:make-encumberance-expression #:update-skill-modifier #:equip-item))
 
 (in-package :scaling-goggles)
 (ql:quickload "split-sequence")
@@ -209,6 +210,47 @@
           (assoc "name" item :test #'string=))
          item
          (player-inventory player))))
+
+(defun equip-item (item player)
+ "Function to move add items to the equipment."
+ (let ((slot-of-item (cdr(assoc "slot" item :test #'string=))))
+   ;If this slot doesn't exist yet...
+   (when
+     (not
+      (car
+       (assoc
+        slot-of-item
+        (player-equipment player)
+        :test #'string=)))
+     (setf
+      (player-equipment player)
+      (acons
+       slot-of-item
+       nil
+       (player-equipment player))))
+   ;If there is something in this slot in this slot...
+   (when
+     (cdr
+      (assoc
+       slot-of-item
+       (player-equipment player)
+       :test #'string=))
+     ;Put it in the inventory
+     (give-item
+      (cdr
+       (assoc
+        slot-of-item
+        (player-equipment player)
+        :test #'string=))
+      player))
+   ;Finally, put the new item into equipment
+   (setf
+    (cdr
+     (assoc
+      slot-of-item
+      (player-equipment player)
+      :test #'string=))
+    item)))
 
 (defun make-default-player (hacky)
   "Creates a player with some default valuess"
