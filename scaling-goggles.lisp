@@ -133,6 +133,7 @@
   (pairlis
    (list "name" "class-skill" "bonus" "score" "value")
    (list name class-skill bonus score
+         ;If it's a class skill and the player has some ranks in it
          `(if (and
                (cdr
                  (assoc "class-skill"
@@ -146,12 +147,14 @@
                          (assoc ,name (player-skills ,player) :test #'string=))
                         :test #'string=))
                 0))
+            ;The value is 3 + rank + modifier
             (+
              (cdr
               (assoc "score"
                      (cdr
                       (assoc ,name (player-skills ,player) :test #'string=))
                      :test #'string=))
+             ;Modifier is (floor(mod - 10)/2)
              (floor
               (-
                (cdr
@@ -159,12 +162,14 @@
                10)
               2)
              3)
+            ;Otherwise, rank + mod
             (+
              (cdr
               (assoc "score"
                      (cdr
                       (assoc ,name (player-skills ,player) :test #'string=))
                      :test #'string=))
+             ;Modifier is (floor(mod - 10)/2)
              (floor
               (-
                (cdr
@@ -182,7 +187,7 @@
          (player-skills player))))
 
 (defun get-skill-modifier (skill modifier player)
-  "Return the quoted value associated with a given skill"
+  "Return the quoted modifier associated with a given skill"
   (cdr
    (assoc modifier
           (cdr
@@ -266,8 +271,10 @@
    (give-stat "encumbrance" (make-encumberance-expression hacky) s)
    (let ((in (open "skills.txt" :if-does-not-exist nil)))
      (when in
+       ;Loop over the lines and split on ':' until EOF
        (loop for line = (split-sequence:split-sequence #\: (read-line in nil))
          while (equal (null (car line)) nil) do
+         ;Give the skill to the player
          (give-skill
           (make-skill-expression (nth 0 line) (nth 1 line) 0 nil hacky)
           s))
