@@ -20,6 +20,11 @@
   equipment
   stats)
 
+(defun assoc-helper (key data)
+  "I wrote this way too many times in code"
+  (cdr
+   (assoc key data :test #'string=)))
+
 (defun print-section (name section is-cons)
   "Helper function to print items from a section of player"
   (print name)
@@ -78,35 +83,23 @@
     (if
       (>
        (-
-        (eval
-         (cdr
-          (assoc "total weight" (player-stats ,player) :test #'string=)))
-        (eval
-         (cdr
-          (assoc "weight" (player-stats ,player) :test #'string=))))
+        (eval (assoc-helper "total weight" (player-stats ,player)))
+        (eval (assoc-helper "weight" (player-stats ,player))))
        (float
         (*
          (carry-capacity
-          (eval
-           (cdr
-            (assoc "strength" (player-scores ,player) :test #'string=))))
+          (eval (assoc-helper "strength" (player-scores ,player))))
          (float 1/3))))
       ;If we are above 2/3 Heavy load, we are above medium load
       (if
         (>
          (-
-          (eval
-           (cdr
-            (assoc "total weight" (player-stats ,player) :test #'string=)))
-          (eval
-           (cdr
-            (assoc "weight" (player-stats ,player) :test #'string=))))
+          (eval (assoc-helper "total weight" (player-stats ,player)))
+          (eval (assoc-helper "weight" (player-stats ,player))))
          (float
           (*
            (carry-capacity
-            (eval
-             (cdr
-              (assoc "strength" (player-scores ,player) :test #'string=))))
+            (eval (assoc-helper "strength" (player-scores ,player))))
            (float 2/3))))
         "Heavy"
         "Medium")
@@ -122,10 +115,9 @@
               (list)
               ;Grab the weight of every piece of equipment to be summed
               (map 'cons
-                (lambda (x)
-                        (cdr
-                         (assoc "weight" (cdr x) :test #'string=)))
-                         (player-equipment ,player))))
+                   (lambda (x)
+                           (assoc-helper "weight" (cdr x)))
+                   (player-equipment ,player))))
     ;Sum all items in inventory
     (reduce #'+
             ;Don't try to map on nil, it cries.
@@ -134,12 +126,10 @@
               ;Grab the weight of every item to be summed
               (map 'cons
                    (lambda (x)
-                           (cdr
-                            (assoc "weight" (cdr x) :test #'string=)))
+                           (assoc-helper "weight" (cdr x)))
                    (player-inventory ,player))))
     ;Finally add the player's own weight to this expression
-    (cdr
-     (assoc "weight" (player-stats ,player) :test #'string=))))
+    (assoc-helper "weight" (player-stats ,player))))
 
 (defun give-stat (stat expr player)
   "Gives a stat to a player"
@@ -164,19 +154,11 @@
        :test #'string=))
      ;Append the expression
      (append
-      (cdr
-       (assoc
-        (car path)
-        curr
-        :test #'string=))
+      (assoc-helper (car path) curr)
       (list expr)))
     ;Otherwise, continue down recursively
     (register-feat
-     (cdr
-      (assoc
-       (car path)
-       curr
-       :test #'string=))
+     (assoc-helper (car path) curr)
      (cdr path)
      expr)))
 
@@ -185,18 +167,15 @@
   (setf
    (player-feats player)
    (acons
-    (cdr
-     (assoc "name" feat :test #'string=))
-    (cdr
-     (assoc "value" feat :test #'string=))
+    (assoc-helper "name" feat)
+    (assoc-helper "value" feat)
     (player-feats player)))
 
   ;When the path given isn't null, we should register the bonuses
   (when
     (not
      (null
-      (cdr
-       (assoc "modifies" feat :test #'string=))))
+      (assoc-helper "modifies" feat)))
     (register-feat
      ;Time to get just a bit hacky
 
@@ -206,9 +185,7 @@
        (concatenate
         'string
         "(soggles:player-"
-        (car
-         (cdr
-          (assoc "modifies" feat :test #'string=)))
+        (car (assoc-helper "modifies" feat))
         " "
         (symbol-name 'sam)
         ")")))
@@ -216,8 +193,7 @@
       (cddr
        (assoc "modifies" feat :test #'string=))
      ;And the expression representing the value of the feat
-     (cdr
-      (assoc "value" feat :test #'string=)))))
+     (assoc-helper "value" feat))))
 
 (defun make-skill-expression (name bonus score class-skill player)
   "Creates a quoted expression representing a skill for a given player"
@@ -227,55 +203,39 @@
          ;If it's a class skill and the player has some ranks in it
          `(+
            (eval
-            (cdr
-             (assoc
-              "misc"
-              (cdr
-               (assoc
-                ,name
-                (player-skills ,player)
-                :test #'string=))
-              :test #'string=)))
+            (assoc-helper
+             "misc"
+             (assoc-helper ,name (player-skills ,player))))
            (if (and
-                (cdr
-                 (assoc "class-skill"
-                    (cdr
-                     (assoc ,name (player-skills ,player) :test #'string=))
-                    :test #'string=))
+                (assoc-helper
+                 "class-skill"
+                 (assoc-helper ,name (player-skills ,player)))
                (>
-                (cdr
-                 (assoc "score"
-                        (cdr
-                         (assoc ,name (player-skills ,player) :test #'string=))
-                        :test #'string=))
+                (assoc-helper
+                 "score"
+                 (assoc-helper ,name (player-skills ,player)))
                 0))
             ;The value is 3 + rank + modifier
             (+
-             (cdr
-              (assoc "score"
-                     (cdr
-                      (assoc ,name (player-skills ,player) :test #'string=))
-                     :test #'string=))
+             (assoc-helper
+              "score"
+              (assoc-helper ,name (player-skills ,player)))
              ;Modifier is (floor(mod - 10)/2)
              (floor
               (-
-               (cdr
-                (assoc ,bonus (player-scores ,player) :test #'string=))
+               (assoc-helper ,bonus (player-scores ,player))
                10)
               2)
              3)
             ;Otherwise, rank + mod
             (+
-             (cdr
-              (assoc "score"
-                     (cdr
-                      (assoc ,name (player-skills ,player) :test #'string=))
-                     :test #'string=))
+             (assoc-helper
+              "score"
+              (assoc-helper ,name (player-skills ,player)))
              ;Modifier is (floor(mod - 10)/2)
              (floor
               (-
-               (cdr
-                (assoc ,bonus (player-scores ,player) :test #'string=))
+               (assoc-helper ,bonus (player-scores ,player))
                10)
               2)))))))
 
@@ -290,14 +250,13 @@
 
 (defun get-skill-modifier (skill modifier player)
   "Return the quoted modifier associated with a given skill"
-  (cdr
-   (assoc modifier
-          (cdr
-           (assoc skill (player-skills player) :test #'string=))
-          :test #'string=)))
+  (assoc-helper
+   modifier
+   (assoc-helper skill (player-skills player))))
 
 (defun update-skill-modifier (skill modifier new-modifier player)
   "Grabs a specific modifier for a specific skill and updates it."
+  ;TODO: Write a setf for assoc-helper
   (setf
    (cdr
     (assoc modifier
@@ -313,8 +272,7 @@
   "Place the item into the player's inventory"
   (setf (player-inventory player)
         (acons
-         (cdr
-          (assoc "name" item :test #'string=))
+         (assoc-helper "name" item)
          item
          (player-inventory player))))
 
@@ -337,20 +295,13 @@
        (player-equipment player))))
    ;If there is something in this slot in this slot...
    (when
-     (cdr
-      (assoc
-       slot-of-item
-       (player-equipment player)
-       :test #'string=))
+     (assoc-helper slot-of-item (player-equipment player))
      ;Put it in the inventory
      (give-item
-      (cdr
-       (assoc
-        slot-of-item
-        (player-equipment player)
-        :test #'string=))
+      (assoc-helper slot-of-item (player-equipment player))
       player))
    ;Finally, put the new item into equipment
+   ;TODO: Write a setf for assoc-helper
    (setf
     (cdr
      (assoc
