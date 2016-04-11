@@ -7,7 +7,8 @@
     #:player-inventory #:player-equipment #:make-skill-expression
     #:make-default-player #:give-skill #:get-skill-modifier #:player-skills
     #:make-weight-expression #:give-stat #:player-stats #:make-item #:give-item
-    #:make-encumberance-expression #:update-skill-modifier #:equip-item))
+    #:make-encumberance-expression #:update-skill-modifier #:equip-item
+    #:give-feat #:make-feat-expression))
 
 (in-package :scaling-goggles)
 (ql:quickload "split-sequence")
@@ -54,6 +55,7 @@
 (defun make-encumberance-expression (player)
   "Creates an encumberance expression"
   `(labels
+    ;Spooky recursive function to calculate heavy load max
     ((carry-capacity (str)
                      (if
                        (and
@@ -66,6 +68,7 @@
                            (make-array '(4) :initial-contents
                                        '(115, 130, 150, 175))
                            (- str 11))))))
+    ;If the it's greater than 1/3, it means we are above light load
     (if
       (>
        (-
@@ -82,6 +85,7 @@
            (cdr
             (assoc "strength" (player-scores ,player) :test #'string=))))
          (float 1/3))))
+      ;If we are above 2/3 Heavy load, we are above medium load
       (if
         (>
          (-
@@ -128,14 +132,97 @@
   "Gives a stat to a player"
   (setf (player-stats player) (acons stat expr (player-stats player))))
 
+(defun make-feat-expression (name expression mod-path)
+  (pairlis (list "name" "value" "modifies") (list name expression (split-sequence:split-sequence #\/ mod-path))))
+
+(defun register-feat (curr path expr)
+  "Properly register all of the feat changes"
+  ;If the next part of the path is null...
+  (if (null (cdr path))
+    ;Set the next item down. We do this instead of cheking if path is nil to
+    ;prevent trying to setf a nil function argument
+    (setf
+     (cdr
+      (assoc
+       (car path)
+       curr
+       :test #'string=))
+     ;Append the expression
+     (append
+      (cdr
+       (assoc
+        (car path)
+        curr
+        :test #'string=))
+      (list expr)))
+    ;Otherwise, continue down recursively
+    (register-feat
+     (cdr
+      (assoc
+       (car path)
+       curr
+       :test #'string=))
+     (cdr path)
+     expr)))
+
+(defun give-feat (feat player)
+  "Places a feat within a player"
+  (setf
+   (player-feats player)
+   (acons
+    (cdr
+     (assoc "name" feat :test #'string=))
+    (cdr
+     (assoc "value" feat :test #'string=))
+    (player-feats player)))
+
+  ;When the path given isn't null, we should register the bonuses
+  (when
+    (not
+     (null
+      (cdr
+       (assoc "modifies" feat :test #'string=))))
+    (register-feat
+     ;Time to get just a bit hacky
+
+     ;We need to access the first field... but it is from a struct, not an alist
+     (eval
+      (read-from-string
+       (concatenate
+        'string
+        "(soggles:player-"
+        (car
+         (cdr
+          (assoc "modifies" feat :test #'string=)))
+        " "
+        (symbol-name 'sam)
+        ")")))
+     ;Grab the rest of the path
+      (cddr
+       (assoc "modifies" feat :test #'string=))
+     ;And the expression representing the value of the feat
+     (cdr
+      (assoc "value" feat :test #'string=)))))
+
 (defun make-skill-expression (name bonus score class-skill player)
   "Creates a quoted expression representing a skill for a given player"
   (pairlis
-   (list "name" "class-skill" "bonus" "score" "value")
-   (list name class-skill bonus score
+   (list "name" "class-skill" "bonus" "score" "misc" "value")
+   (list name class-skill bonus score '(+)
          ;If it's a class skill and the player has some ranks in it
-         `(if (and
-               (cdr
+         `(+
+           (eval
+            (cdr
+             (assoc
+              "misc"
+              (cdr
+               (assoc
+                ,name
+                (player-skills ,player)
+                :test #'string=))
+              :test #'string=)))
+           (if (and
+                (cdr
                  (assoc "class-skill"
                     (cdr
                      (assoc ,name (player-skills ,player) :test #'string=))
@@ -175,7 +262,7 @@
                (cdr
                 (assoc ,bonus (player-scores ,player) :test #'string=))
                10)
-              2))))))
+              2)))))))
 
 (defun give-skill (skill player)
   "Place the skill into the player"
