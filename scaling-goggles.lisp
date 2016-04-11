@@ -162,6 +162,16 @@
      (cdr path)
      expr)))
 
+
+;EX: A feat that adds double the ayer's acrobatics score as a bonus
+;(soggles:give-feat
+; (soggles:make-feat-expression
+;  "Gymnast"
+;  '(*
+;    2
+;    (soggles:get-skill-modifier "Acrobatics" "score" sam))
+;  "skills/Acrobatics/misc")
+; sam)
 (defun give-feat (feat player)
   "Places a feat within a player"
   (setf
@@ -243,8 +253,7 @@
   "Place the skill into the player"
   (setf (player-skills player)
         (acons
-         (cdr
-          (assoc "name" skill :test #'string=))
+         (assoc-helper "name" skill)
          skill
          (player-skills player))))
 
@@ -259,10 +268,10 @@
   ;TODO: Write a setf for assoc-helper
   (setf
    (cdr
-    (assoc modifier
-           (cdr
-            (assoc skill (player-skills player) :test #'string=))
-           :test #'string=))
+    (assoc
+     modifier
+     (assoc-helper skill (player-skills player))
+     :test #'string=))
    new-modifier))
 
 (defun make-item (name weight)
@@ -278,15 +287,11 @@
 
 (defun equip-item (item player)
  "Function to move add items to the equipment."
- (let ((slot-of-item (cdr(assoc "slot" item :test #'string=))))
+ (let ((slot-of-item (assoc-helper "slot" item)))
    ;If this slot doesn't exist yet...
    (when
      (not
-      (car
-       (assoc
-        slot-of-item
-        (player-equipment player)
-        :test #'string=)))
+      (assoc-helper slot-of-item (player-equipment player)))
      (setf
       (player-equipment player)
       (acons
@@ -315,7 +320,8 @@
  (let ((s (make-player)))
    (setf (player-scores s)
          (pairlis
-          (list "strength" "dexterity" "constitution" "intelligence" "wisdom" "charisma")
+          (list "strength" "dexterity" "constitution"
+                "intelligence" "wisdom" "charisma")
           (list 10 10 10 10 10 10)))
    (setf (player-stats s)
          (pairlis (list) (list)))
