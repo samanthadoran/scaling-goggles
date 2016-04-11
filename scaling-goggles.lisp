@@ -58,12 +58,18 @@
     ;Spooky recursive function to calculate heavy load max
     ((carry-capacity (str)
                      (if
+                       ;if str element of [1,10]
                        (and
                         (< str 11)
                         (> str 0))
+                       ;Multiply it by 10 to figure heavy load
                        (* str 10)
+                       ;If str element of [15..infinity)
                        (if (> str 14)
+                         ;Heavy load is two * carry-capacity with strength
+                         ;reduced by 5
                          (* 2 (carry-capacity (- str 5)))
+                         ;Otherwise, it is one of these four values
                          (aref
                            (make-array '(4) :initial-contents
                                        '(115, 130, 150, 175))
@@ -107,24 +113,31 @@
       "Light")))
 
 (defun make-weight-expression (player)
-  "Creates an expression to define a player's weight"
+  "Creates an expression to define a player's total weight"
   `(+
+    ;Sum all items in equipment
     (reduce #'+
+            ;Don't try to map on nil, it cries
             (if (null (player-equipment ,player))
               (list)
+              ;Grab the weight of every piece of equipment to be summed
               (map 'cons
                 (lambda (x)
                         (cdr
                          (assoc "weight" (cdr x) :test #'string=)))
                          (player-equipment ,player))))
+    ;Sum all items in inventory
     (reduce #'+
+            ;Don't try to map on nil, it cries.
             (if (null (player-inventory ,player))
               (list)
+              ;Grab the weight of every item to be summed
               (map 'cons
                    (lambda (x)
                            (cdr
                             (assoc "weight" (cdr x) :test #'string=)))
                    (player-inventory ,player))))
+    ;Finally add the player's own weight to this expression
     (cdr
      (assoc "weight" (player-stats ,player) :test #'string=))))
 
@@ -133,7 +146,9 @@
   (setf (player-stats player) (acons stat expr (player-stats player))))
 
 (defun make-feat-expression (name expression mod-path)
-  (pairlis (list "name" "value" "modifies") (list name expression (split-sequence:split-sequence #\/ mod-path))))
+  (pairlis
+   (list "name" "value" "modifies")
+   (list name expression (split-sequence:split-sequence #\/ mod-path))))
 
 (defun register-feat (curr path expr)
   "Properly register all of the feat changes"
