@@ -158,12 +158,17 @@
      (append
       (gethash (car path) curr)
       (list expr)))
-    ;Otherwise, continue down recursively
-    (register-feat
-     (gethash (car path) curr)
-     (cdr path)
-     expr)))
-
+    (progn
+     ;When the item doesn't exist, create it...
+     (when (null (gethash (car path) curr))
+       (setf
+        (gethash (car path) curr)
+        (make-hash-table :test 'equal)))
+     ;and then continue down recursively
+     (register-feat
+      (gethash (car path) curr)
+      (cdr path)
+      expr))))
 
 ;EX: A feat that adds double the ayer's acrobatics score as a bonus
 ;(soggles:give-feat
