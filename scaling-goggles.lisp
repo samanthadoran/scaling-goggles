@@ -24,7 +24,7 @@
        value))
     a))
 
-(defun print-section (name section is-nested)
+(defun print-section (name section)
   "Helper function to print items from a section of player"
   (print name)
   (print "***********")
@@ -35,7 +35,7 @@
      (print key)
      (princ ": ")
      ;If it is of type cons, don't try to eval that, it doesn't make much sense.
-     (if is-nested
+     (if (hash-table-p value)
        ;Instead, loop over the associations and print them tabbed over
        (loop for nested-key being the hash-keys of value
          using (hash-value nested-value)
@@ -51,12 +51,10 @@
 
 (defun print-pretty (player)
   "Print a human readable version of player"
-  (print-section "Stats" (gethash "stats" player) nil)
-  (print-section "Skills" (gethash "skills" player) T)
-  (print-section "Scores" (gethash "scores" player) nil)
-  (print-section "Feats" (gethash "feats" player) T)
-  (print-section "Inventory" (gethash "inventory" player) T)
-  (print-section "Equipment" (gethash "equipment" player) T))
+  (loop for key being the hash-keys of player
+    using (hash-value value)
+    do
+    (print-section key (gethash key player))))
 
 (defun give-entry (section name entry player)
   (setf
@@ -147,17 +145,24 @@
    (list "name" "value" "modifies")
    (list name expression mod-path)))
 
-(defun register-feat (curr path expr)
+(defun register-feat (curr path expr fn)
   "Properly register all of the feat changes"
   ;If the next part of the path is null...
   (if (null (cdr path))
     ;Set the next item down. We do this instead of cheking if path is nil to
     ;prevent trying to setf a nil function argument
-    (setf
-     (gethash (car path) curr)
-     (append
+    (progn
+     ;If the thing doesn't exist, just make it a list and hope
+     (when (null (gethash (car path) curr))
+       (setf
+        (gethash (car path) curr)
+        `(funcall ,fn)))
+     ;Append the expression to the list
+     (setf
       (gethash (car path) curr)
-      (list expr)))
+      (append
+       (gethash (car path) curr)
+       (list expr))))
     (progn
      ;When the item doesn't exist, create it...
      (when (null (gethash (car path) curr))
@@ -168,7 +173,8 @@
      (register-feat
       (gethash (car path) curr)
       (cdr path)
-      expr))))
+      expr
+      fn))))
 
 ;EX: A feat that adds double the ayer's acrobatics score as a bonus
 ;(soggles:give-feat
@@ -179,7 +185,7 @@
 ;    (soggles:get-skill-modifier "Acrobatics" "score" sam))
 ;  "skills/Acrobatics/misc")
 ; sam)
-(defun give-feat (feat player)
+(defun give-feat (feat player fn)
   "Places a feat within a player"
   (give-entry "feats" (gethash "name" feat) feat player)
 
@@ -193,7 +199,8 @@
      ;Get the path, make it into a list
      (split-sequence:split-sequence #\/ (gethash "modifies" feat))
      ;And the expression representing the value of the feat
-     (gethash "value" feat))))
+     (gethash "value" feat)
+     fn)))
 
 (defun make-skill-expression (name bonus score class-skill player)
   "Creates a quoted expression representing a skill for a given player"
