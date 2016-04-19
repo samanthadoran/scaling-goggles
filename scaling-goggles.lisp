@@ -3,22 +3,28 @@
 (defpackage #:scaling-goggles
   (:nicknames #:soggles)
   (:use :cl :cl-user)
-  (:export #:print-pretty #:give-entry
-    #:make-skill-expression
-    #:make-default-player #:get-skill-modifier
-    #:make-weight-expression #:make-item #:give-item
-    #:make-encumberance-expression #:update-skill-modifier #:equip-item
-    #:give-feat #:make-feat-expression))
+  (:export #:print-pretty
+           #:give-entry #:give-item #:equip-item #:give-feat #:get-skill-modifier
+           #:make-skill-expression #:make-default-player #:make-weight-expression
+           #:make-item #:make-encumberance-expression #:make-feat-expression
+           #:update-skill-modifier))
+
+;TODO: Move everything to hashtables. The remaining alists are surely insanity
 
 (in-package :scaling-goggles)
 (ql:quickload "split-sequence")
 
-(defun assoc-helper (key data)
-  "I wrote this way too many times in code"
-  (cdr
-   (assoc key data :test #'string=)))
+(defun make-hash-from-lists (keys values)
+  (let ((a (make-hash-table :test 'equal)))
+    (loop for key in keys
+      for value in values
+      do
+      (setf
+       (gethash key a)
+       value))
+    a))
 
-(defun print-section (name section is-cons)
+(defun print-section (name section is-nested)
   "Helper function to print items from a section of player"
   (print name)
   (print "***********")
@@ -29,16 +35,17 @@
      (print key)
      (princ ": ")
      ;If it is of type cons, don't try to eval that, it doesn't make much sense.
-     (if is-cons
+     (if is-nested
        ;Instead, loop over the associations and print them tabbed over
-       (loop for assoc in value
+       (loop for nested-key being the hash-keys of value
+         using (hash-value nested-value)
          do
          (progn
           (princ #\linefeed)
           (princ #\tab)
-          (princ (eval (car assoc)))
+          (princ (eval nested-key))
           (princ ": ")
-          (princ (eval (cdr assoc)))))
+          (princ (eval nested-value))))
        (princ (eval value)))
     (princ #\linefeed))))
 
@@ -118,7 +125,7 @@
                         (declare (ignore key))
                         (setf
                          a
-                         (cons (assoc-helper "weight" value) a)))
+                         (cons (gethash "weight" value) a)))
                (gethash "inventory" ,player))
               a))
     ;Sum all items in equipment
@@ -130,13 +137,13 @@
                         (declare (ignore key))
                         (setf
                          a
-                         (cons (assoc-helper "weight" value) a)))
+                         (cons (gethash "weight" value) a)))
                (gethash "equipment" ,player))
               a))
     (gethash "weight" (gethash "stats" ,player))))
 
 (defun make-feat-expression (name expression mod-path)
-  (pairlis
+  (make-hash-from-lists
    (list "name" "value" "modifies")
    (list name expression mod-path)))
 
@@ -146,23 +153,14 @@
   (if (null (cdr path))
     ;Set the next item down. We do this instead of cheking if path is nil to
     ;prevent trying to setf a nil function argument
-    (if (listp curr)
-      (setf
-       (cdr
-        (assoc (car path) curr :test #'string=))
-       (append
-        (assoc-helper (car path) curr)
-        (list expr)))
-      (setf
-       (gethash (car path) curr)
-       (append
-        (gethash (car path) curr)
-        (list expr))))
+    (setf
+     (gethash (car path) curr)
+     (append
+      (gethash (car path) curr)
+      (list expr)))
     ;Otherwise, continue down recursively
     (register-feat
-     (if (listp curr)
-       (assoc-helper (car path) curr)
-       (gethash (car path) curr))
+     (gethash (car path) curr)
      (cdr path)
      expr)))
 
@@ -178,43 +176,43 @@
 ; sam)
 (defun give-feat (feat player)
   "Places a feat within a player"
-  (give-entry "feats" (assoc-helper "name" feat) feat player)
+  (give-entry "feats" (gethash "name" feat) feat player)
 
   ;When the path given isn't null, we should register the bonuses
   (when
     (not
      (null
-      (assoc-helper "modifies" feat)))
+      (gethash "modifies" feat)))
     (register-feat
      player
      ;Get the path, make it into a list
-     (split-sequence:split-sequence #\/ (assoc-helper "modifies" feat))
+     (split-sequence:split-sequence #\/ (gethash "modifies" feat))
      ;And the expression representing the value of the feat
-     (assoc-helper "value" feat))))
+     (gethash "value" feat))))
 
 (defun make-skill-expression (name bonus score class-skill player)
   "Creates a quoted expression representing a skill for a given player"
-  (pairlis
+  (make-hash-from-lists
    (list "name" "class-skill" "bonus" "score" "misc" "value")
    (list name class-skill bonus score '(+)
          ;If it's a class skill and the player has some ranks in it
          `(+
            (eval
-            (assoc-helper
+            (gethash
              "misc"
              (gethash ,name (gethash "skills" ,player))))
            (if (and
-                (assoc-helper
+                (gethash
                  "class-skill"
                  (gethash ,name (gethash "skills" ,player)))
                (>
-                (assoc-helper
+                (gethash
                  "score"
                  (gethash ,name (gethash "skills" ,player)))
                 0))
             ;The value is 3 + rank + modifier
             (+
-             (assoc-helper
+             (gethash
               "score"
               (gethash ,name (gethash "skills" ,player)))
              ;Modifier is (floor(mod - 10)/2)
@@ -226,7 +224,7 @@
              3)
             ;Otherwise, rank + mod
             (+
-             (assoc-helper
+             (gethash
               "score"
               (gethash ,name (gethash "skills" ,player)))
              ;Modifier is (floor(mod - 10)/2)
@@ -238,7 +236,7 @@
 
 (defun get-skill-modifier (skill modifier player)
   "Return the quoted modifier associated with a given skill"
-  (assoc-helper
+  (gethash
    modifier
    (gethash skill (gethash "skills" player))))
 
@@ -246,27 +244,25 @@
   "Grabs a specific modifier for a specific skill and updates it."
   ;TODO: Write a setf for gethash
   (setf
-   (cdr
-    (assoc
+    (gethash
      modifier
-     (gethash skill (gethash "skills" player))
-     :test #'string=))
+     (gethash skill (gethash "skills" player)))
    new-modifier))
 
 (defun make-item (name weight)
-  (pairlis (list "name" "weight") (list name weight)))
+  (make-hash-from-lists (list "name" "weight") (list name weight)))
 
 (defun give-item (item player)
   "Place the item into the player's inventory"
   (give-entry
    "inventory"
-   (assoc-helper "name" item)
+   (gethash "name" item)
    item
    player))
 
 (defun equip-item (item player)
  "Function to move add items to the equipment."
-  (let ((slot-of-item (assoc-helper "slot" item)))
+  (let ((slot-of-item (gethash "slot" item)))
     ;When there is an item in the slot...
     (when
       (gethash slot-of-item (gethash "equipment" player))
@@ -284,12 +280,13 @@
 (defun make-default-player ()
   "Creates a player with some default valuess"
   (let ((s (make-hash-table :test 'equal)))
-    (setf (gethash "scores" s) (make-hash-table :test 'equal))
-    (loop for name in (list "strength" "dexterity" "constitution"
-                            "intelligence" "wisdom" "charisma")
-      for value in (list 10 10 10 10 10 10)
-      do
-      (setf (gethash name (gethash "scores" s)) value))
+    ;Make the hash table of scores
+    (setf
+     (gethash "scores" s)
+     (make-hash-from-lists
+      (list "strength" "dexterity" "constitution"
+            "intelligence" "wisdom" "charisma")
+      (list 10 10 10 10 10 10)))
     (setf
      (gethash "stats" s)
      (make-hash-table :test 'equal))
